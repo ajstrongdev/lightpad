@@ -12,12 +12,9 @@ namespace LightPad.Frontend {
         const int HEIGHT = 26;
 
         // Properties
-        private Gtk.TextBuffer buffer;
         public Gtk.Entry entry;
         public Gtk.Image search_icon;
         private Gtk.Image clear_icon;
-        /* protects against bug where get_text() will return ""
-           if the user happens to type in the hint string */
         private bool is_hinted = true;
         public string hint_string;
 
@@ -26,16 +23,15 @@ namespace LightPad.Frontend {
 
         public string text {
             owned get {
-                string current_text = this.buffer.text;
+                string current_text = this.entry.get_text ();
                 return (current_text == this.hint_string && this.is_hinted) ? "" : current_text;
             }
             set {
-                this.buffer.text = value;
-                if (this.buffer.text == "") {
+                this.entry.set_text (value);
+                if (this.entry.get_text () == "") {
                     this.hint ();
                 } else {
                     this.reset_font ();
-                    this.entry.set_text (this.buffer.text);
                     this.clear_icon.visible = true;
                 }
             }
@@ -43,8 +39,6 @@ namespace LightPad.Frontend {
 
         public Searchbar () {
             this.hint_string = _("Search");
-            this.buffer = new Gtk.TextBuffer (null);
-            this.buffer.text = this.hint_string;
 
             // HBox properties
             this.set_homogeneous (false);
@@ -52,25 +46,24 @@ namespace LightPad.Frontend {
             this.set_size_request (WIDTH, HEIGHT);
 
             // Wrapper
-            // Space between the icon and the phrase search
             var wrapper = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 3);
             this.add (wrapper);
 
-            // Pack edit-find-symbolic icon
+            // Search icon
             var search_icon_wrapper = new Gtk.EventBox ();
             this.search_icon = new Gtk.Image.from_icon_name ("edit-find-symbolic", Gtk.IconSize.MENU);
             search_icon_wrapper.set_visible_window (false);
             search_icon_wrapper.add (this.search_icon);
             search_icon_wrapper.border_width = 4;
-            search_icon_wrapper.button_release_event.connect ( () => { return true; } );
+            search_icon_wrapper.button_release_event.connect (() => true);
             wrapper.pack_start (search_icon_wrapper, false, true, 3);
 
             // Label properties
             this.entry = new Gtk.Entry ();
-            this.entry.set_text (this.buffer.text);
+            this.entry.set_text (this.hint_string);
+            this.entry.set_placeholder_text (this.hint_string);
             this.entry.set_has_frame (false);
             this.entry.set_alignment (0.0f);
-            this.entry.set_placeholder_text (this.hint_string);
             this.entry.set_hexpand (true);
             this.entry.set_halign (Gtk.Align.START);
             wrapper.pack_start (this.entry, true, true, 0);
@@ -80,25 +73,24 @@ namespace LightPad.Frontend {
             clear_icon_wrapper.set_visible_window (false);
             clear_icon_wrapper.border_width = 4;
             this.clear_icon = new Gtk.Image.from_icon_name ("edit-clear-symbolic", Gtk.IconSize.MENU);
-
             clear_icon_wrapper.add (this.clear_icon);
-            clear_icon_wrapper.button_release_event.connect ( () => { this.hint (); return true; });
+            clear_icon_wrapper.button_release_event.connect (() => { this.hint (); return true; });
             clear_icon_wrapper.set_hexpand (true);
             clear_icon_wrapper.set_halign (Gtk.Align.END);
             wrapper.pack_end (clear_icon_wrapper, false, true, 3);
 
-            // Connect signals and callbacks
-            this.buffer.changed.connect (on_changed);
+            // Connect signals
+            this.entry.changed.connect (on_changed);
             this.draw.connect (this.draw_background);
             this.realize.connect (() => {
-                this.hint (); // hint it
+                this.hint ();
             });
         }
 
         public void hint () {
-            this.buffer.text = "";
             this.entry.set_text (this.hint_string);
             this.clear_icon.visible = false;
+            this.is_hinted = true;
         }
 
         public void unhint () {
@@ -113,7 +105,6 @@ namespace LightPad.Frontend {
         }
 
         private void on_changed () {
-            // Send changed signal
             this.changed ();
         }
 
